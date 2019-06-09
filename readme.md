@@ -14,6 +14,19 @@ This command will create:
  - Dummy Admin Credentials 
  - Publish all config, views and assets,  
  - Migrate database
+ 
+## Dummy Data
+
+To generate dummy data just execute this command 
+```
+php artisan blog:dummy
+```
+It will generate a dummy admin user, categories from `config/blog.php` file and three posts.
+
+To add new categories just edit `config/blog.php` and seed using categories seeder:
+```
+php artisan db:seed --class='MetaGameTechnologies\\Blog\\Database\\Seeds\\CategoriesSeeder'
+```
 
 ## Admin Panel
 Login as admin and then go to `/blog/panel`

@@ -3,6 +3,7 @@
 namespace MetaGameTechnologies\Blog;
 
 use Illuminate\Support\ServiceProvider;
+use MetaGameTechnologies\Blog\Commands\Dummy;
 use MetaGameTechnologies\Blog\Commands\Install;
 use MetaGameTechnologies\Blog\Http\Controllers\AdminPanelController;
 use MetaGameTechnologies\Blog\Http\Controllers\BlogController;
@@ -19,7 +20,10 @@ class BlogServiceProvider extends ServiceProvider
 
     public function boot()
     {
-        $this->commands([Install::class,]);
+        $this->commands([
+            Install::class,
+            Dummy::class
+        ]);
         $this->loadRoutesFrom(__DIR__.'/routes/web.php');
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
         $this->loadViewsFrom(__DIR__.'/views', 'blog');

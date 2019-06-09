@@ -10,6 +10,6 @@ class DatabaseSeeder extends Seeder
     {
          $this->call(BlogAdminSeeder::class);
          $this->call(CategoriesSeeder::class);
-//         $this->call(PostSeeder::class);
+         $this->call(PostSeeder::class);
     }
 }
