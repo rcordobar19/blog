@@ -43,7 +43,7 @@ class Dummy extends Command
         $this->info('Dummy data exported.');
 
         $headers = ['Email', 'Password'];
-        $admin = ['admin@example.com', 'secret'];
+        $admin = [['admin@example.com', 'secret']];
         $this->table($headers, $admin);
     }
 }

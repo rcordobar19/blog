@@ -43,7 +43,6 @@ class Install extends Command
         $this->call('make:auth');
         $this->call('vendor:publish', ['--force' => 'true', '--provider' => 'MetaGameTechnologies\Blog\BlogServiceProvider']);
         $this->call('migrate');
-        $this->call('db:seed', ['--class' => 'MetaGameTechnologies\\Blog\\Database\\Seeds\\DatabaseSeeder']);
 
         $this->info('Done.');
     }

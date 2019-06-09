@@ -38565,7 +38565,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "version", function() { return version; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "withValidation", function() { return withValidation; });
 /**
-  * vee-validate v2.2.9
+  * vee-validate v2.2.10
   * (c) 2019 Abdelrahman Awad
   * @license MIT
   */
@@ -38594,7 +38594,7 @@ var isNaN$1 = function (value) {
   }
 
   // eslint-disable-next-line
-  return value === value;
+  return typeof(value) === 'number' && value !== value;
 };
 
 /**
@@ -39984,6 +39984,20 @@ function normalizeSlots (slots, ctx) {
     return arr.concat(slots[key]);
   }, []);
 }
+function createRenderless (h, children) {
+  // Only render the first item of the node.
+  if (Array.isArray(children) && children[0]) {
+    return children[0];
+  }
+
+  // a single node.
+  if (children) {
+    return children;
+  }
+
+  // No slots, render nothing.
+  return h();
+}
 
 /**
  * Generates the options required to construct a field.
@@ -40409,7 +40423,7 @@ var prototypeAccessors$1 = { validator: { configurable: true },isRequired: { con
 
 prototypeAccessors$1.validator.get = function () {
   if (!this.vm || !this.vm.$validator) {
-    return { validate: function () {} };
+    return { validate: function () { return Promise.resolve(true); } };
   }
 
   return this.vm.$validator;
@@ -40537,6 +40551,8 @@ Field.prototype.isWaitingFor = function isWaitingFor (promise) {
  * Updates the field with changed data.
  */
 Field.prototype.update = function update (options) {
+    var this$1 = this;
+
   this.targetOf = options.targetOf || null;
   this.immediate = options.immediate || this.immediate || false;
   this.persist = options.persist || this.persist || false;
@@ -40568,6 +40584,13 @@ Field.prototype.update = function update (options) {
   // update required flag flags
   if (options.rules !== undefined) {
     this.flags.required = this.isRequired;
+  }
+
+  if (Object.keys(options.rules || {}).length === 0 && this.updated) {
+    var resetFlag = this.flags.validated;
+    this.validator.validate(("#" + (this.id))).then(function () {
+      this$1.flags.validated = resetFlag;
+    });
   }
 
   // validate if it was validated before and field was updated and there was a rules mutation.
@@ -42753,7 +42776,7 @@ var messages = {
     if ( ref === void 0 ) ref = [];
     var decimals = ref[0]; if ( decimals === void 0 ) decimals = '*';
 
-    return ("The " + field + " field must be numeric and may contain " + (!decimals || decimals === '*' ? '' : decimals) + " decimal points.");
+    return ("The " + field + " field must be numeric and may contain" + (!decimals || decimals === '*' ? '' : decimals) + " decimal points.");
 },
   digits: function (field, ref) {
     var length = ref[0];
@@ -48921,6 +48944,10 @@ var ValidationProvider = {
     tag: {
       type: String,
       default: 'span'
+    },
+    slim: {
+      type: Boolean,
+      default: false
     }
   },
   watch: {
@@ -49010,7 +49037,7 @@ var ValidationProvider = {
     /* istanbul ignore next */
     if (!isCallable(slot)) {
       if (true) {
-        warn('ValidationProvider expects a scoped slot. Did you forget to add "slot-scope" to your slot?');
+        warn('ValidationProvider expects a scoped slot. Did you forget to add "v-slot" to your slot?');
       }
 
       return h(this.tag, this.$slots.default);
@@ -49022,7 +49049,7 @@ var ValidationProvider = {
       addListeners.call(this$1, input);
     });
 
-    return h(this.tag, nodes);
+    return this.slim ? createRenderless(h, nodes) : h(this.tag, nodes);
   },
   beforeDestroy: function beforeDestroy () {
     // cleanup reference.
@@ -49376,12 +49403,17 @@ var ValidationObserver = {
     tag: {
       type: String,
       default: 'span'
+    },
+    slim: {
+      type: Boolean,
+      default: false
     }
   },
   data: function () { return ({
     vid: ("obs_" + (OBSERVER_COUNTER++)),
     refs: {},
     observers: [],
+    persistedStore: {}
   }); },
   computed: {
     ctx: function ctx () {
@@ -49407,7 +49439,14 @@ var ValidationObserver = {
         reset: function () { return this$1.reset(); }
       };
 
-      return values(this.refs).concat( this.observers ).reduce(function (acc, provider) {
+      return values(this.refs).concat( Object.keys(this.persistedStore).map(function (key) {
+          return {
+            vid: key,
+            flags: this$1.persistedStore[key].flags,
+            messages: this$1.persistedStore[key].errors
+          };
+        }),
+        this.observers ).reduce(function (acc, provider) {
         Object.keys(flagMergingStrategy).forEach(function (flag) {
           var flags = provider.flags || provider.ctx;
           if (!(flag in acc)) {
@@ -49447,16 +49486,12 @@ var ValidationObserver = {
     }
   },
   render: function render (h) {
-    var slots = this.$scopedSlots.default;
-    this._persistedStore = this._persistedStore || {};
-    if (!isCallable(slots)) {
-      return h(this.tag, this.$slots.default);
+    var slots = this.$slots.default || this.$scopedSlots.default || [];
+    if (isCallable(slots)) {
+      slots = slots(this.ctx);
     }
 
-    return h(this.tag, {
-      on: this.$listeners,
-      attrs: this.$attrs
-    }, slots(this.ctx));
+    return this.slim ? createRenderless(h, slots) : h(this.tag, { on: this.$listeners, attrs: this.$attrs }, slots);
   },
   methods: {
     subscribe: function subscribe (subscriber, kind) {
@@ -49469,7 +49504,7 @@ var ValidationObserver = {
       }
 
       this.refs = Object.assign({}, this.refs, ( obj = {}, obj[subscriber.vid] = subscriber, obj ));
-      if (subscriber.persist && this._persistedStore[subscriber.vid]) {
+      if (subscriber.persist && this.persistedStore[subscriber.vid]) {
         this.restoreProviderState(subscriber);
       }
     },
@@ -49494,15 +49529,22 @@ var ValidationObserver = {
       )).then(function (results) { return results.every(function (r) { return r; }); });
     },
     reset: function reset () {
+      var this$1 = this;
+
+      Object.keys(this.persistedStore).forEach(function (key) {
+        this$1.$delete(this$1.persistedStore, key);
+      });
       return values(this.refs).concat( this.observers).forEach(function (ref) { return ref.reset(); });
     },
     restoreProviderState: function restoreProviderState (provider) {
-      var state = this._persistedStore[provider.vid];
+      var state = this.persistedStore[provider.vid];
       provider.setFlags(state.flags);
       provider.applyResult(state);
-      delete this._persistedStore[provider.vid];
+      this.$delete(this.persistedStore, provider.vid);
     },
     removeProvider: function removeProvider (vid) {
+      var obj;
+
       var provider = this.refs[vid];
       // save it for the next time.
       if (provider && provider.persist) {
@@ -49513,11 +49555,11 @@ var ValidationObserver = {
           }
         }
 
-        this._persistedStore[vid] = {
-          flags: provider.flags,
-          errors: provider.messages,
-          failedRules: provider.failedRules
-        };
+        this.persistedStore = assign({}, this.persistedStore, ( obj = {}, obj[vid] = {
+            flags: provider.flags,
+            errors: provider.messages,
+            failedRules: provider.failedRules
+          }, obj ));
       }
 
       this.$delete(this.refs, vid);
@@ -49586,7 +49628,7 @@ function withValidation (component, ctxToProps) {
   return hoc;
 }
 
-var version = '2.2.9';
+var version = '2.2.10';
 
 Object.keys(Rules).forEach(function (rule) {
   Validator.extend(rule, Rules[rule].validate, assign({}, Rules[rule].options, { paramNames: Rules[rule].paramNames }));
@@ -67966,9 +68008,9 @@ __webpack_require__.r(__webpack_exports__);
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /Users/n0br4inz/www/withoutblog/packages/metagame/blog/src/resources/js/app.js */"./src/resources/js/app.js");
-__webpack_require__(/*! /Users/n0br4inz/www/withoutblog/packages/metagame/blog/src/resources/sass/app.scss */"./src/resources/sass/app.scss");
-module.exports = __webpack_require__(/*! /Users/n0br4inz/www/withoutblog/packages/metagame/blog/node_modules/@fortawesome/fontawesome-pro/scss/fontawesome.scss */"./node_modules/@fortawesome/fontawesome-pro/scss/fontawesome.scss");
+__webpack_require__(/*! /Users/n0br4inz/www/packages/metagame/blog/src/resources/js/app.js */"./src/resources/js/app.js");
+__webpack_require__(/*! /Users/n0br4inz/www/packages/metagame/blog/src/resources/sass/app.scss */"./src/resources/sass/app.scss");
+module.exports = __webpack_require__(/*! /Users/n0br4inz/www/packages/metagame/blog/node_modules/@fortawesome/fontawesome-pro/scss/fontawesome.scss */"./node_modules/@fortawesome/fontawesome-pro/scss/fontawesome.scss");
 
 
 /***/ })
