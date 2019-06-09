@@ -1,7 +1,7 @@
 
 # Blog
 
-Blog system for business site.
+Laravel and Vue Blog System for business site.
 
 ## Installation
 
