@@ -2,6 +2,8 @@
     <div>
         <div>
             <div class="my-5">
+                <a href="/blog" class="btn btn-outline-primary mb-3">Back to blog</a>
+
                 <img class="img-fluid border-r-6" :src="post.post_image ? post.post_image : '/vendor/blog/images/default/post-image.png'" />
             </div>
 
