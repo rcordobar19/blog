@@ -15,7 +15,7 @@
         "v-uploader": "^1.8.0",
         "vee-validate": "^2.2.10",
         "vee-validate-laravel": "^1.1.0",
-        "vue-moment": "^4.0.0",
+        "vue-moment": "^4.1.0",
         "vue-multiselect": "^2.1.6",
         "vue-sweetalert2": "^2.0.5"
     },
